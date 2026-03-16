@@ -1,0 +1,21 @@
+id,prompt,correct,trial1,trial2,trial3,raw_trial1,raw_trial2,raw_trial3
+0,Which of the following statements accurately descr...,D,D,D,D,"{
+  ""reasoning"": ""The background text explicitly states that MOND reduces the discrepancy between the velocity dispersions and clusters' observed missing baryonic mass from a factor of around 10 to a factor of about 2, but does not fully eliminate it. This directly matches one of the answer choices."",
+  ""answer"": ""D""
+}","{
+  ""reasoning"": ""The background explicitly states that MOND reduces the discrepancy between velocity dispersions and missing baryonic mass in galaxy clusters from a factor of around 10 to about 2, but does not fully eliminate it. This matches option D, while other options misrepresent MOND's effects or propose unrelated mechanisms."",
+  ""answer"": ""D""
+}","{
+  ""reasoning"": ""The background states that MOND reduces the discrepancy between velocity dispersions and clusters' observed missing baryonic mass from a factor of around 10 to a factor of about 2, but does not fully eliminate it. This directly matches one of the provided options."",
+  ""answer"": ""D""
+}"
+1,Which of the following is an accurate definition o...,A,A,A,A,"{
+  ""reasoning"": ""The background states that dynamic scaling is a test for self-similarity in evolving systems, expressed mathematically as f(x,t)∼tθφ(xtz). This implies the system evolves over time, but snapshots at different times are similar when appropriately scaled. Option A correctly captures evolution and similarity across times via a time-dependent variable."",
+  ""answer"": ""A""
+}","{
+  ""reasoning"": ""The background states that dynamic scaling is a test for self-similarity in an evolving system, expressed mathematically as f(x,t)∼tθφ(xtz). This implies the system evolves over time, but snapshots at different times are similar when scaled appropriately, which matches the description in option A."",
+  ""answer"": ""A""
+}","{
+  ""reasoning"": ""The background states that dynamic scaling is a test for self-similarity in an evolving system, expressed mathematically as f(x,t)∼tθφ(xtz). This implies the system evolves over time, but data at different times are similar when appropriately scaled. Option A captures this by describing evolution and similarity across time snapshots via a time-dependent variable."",
+  ""answer"": ""A""
+}"
