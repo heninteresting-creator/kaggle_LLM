@@ -6,7 +6,14 @@ from config import SILICONFLOW_API_KEY, SILICONFLOW_BASE_URL, RERANKER_MODEL, LL
 
 client = OpenAI(api_key=SILICONFLOW_API_KEY, base_url=SILICONFLOW_BASE_URL)
 
-def call_rerank_api(pairs):
+def call_rerank_api(pairs, batch_size=100):
+    """
+    重排API调用 - 支持分批处理
+    
+    Args:
+        pairs: [(query, doc1), (query, doc2), ...]
+        batch_size: 每批发送的文档数量
+    """
     query = pairs[0][0]
     documents = [p[1] for p in pairs]
     url = f"{SILICONFLOW_BASE_URL}/rerank"
@@ -14,23 +21,31 @@ def call_rerank_api(pairs):
         "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
         "Content-Type": "application/json"
     }
-    payload = {
-        "model": RERANKER_MODEL,
-        "query": query,
-        "documents": documents,
-        "top_n": len(documents)
-    }
-    try:
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        scores = [0.0] * len(documents)
-        for res in data["results"]:
-            scores[res["index"]] = res["relevance_score"]
-        return scores
-    except Exception as e:
-        print(f"[Rerank Error] {type(e).__name__}: {e}")
-        return [1.0] * len(documents)
+    
+    all_scores = []
+    
+    # 🚀 分批处理
+    for i in range(0, len(documents), batch_size):
+        batch_docs = documents[i:i+batch_size]
+        payload = {
+            "model": RERANKER_MODEL,
+            "query": query,
+            "documents": batch_docs,
+            "top_n": len(batch_docs)
+        }
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            batch_scores = [0.0] * len(batch_docs)
+            for res in data["results"]:
+                batch_scores[res["index"]] = res["relevance_score"]
+            all_scores.extend(batch_scores)
+        except Exception as e:
+            print(f"[Rerank Error] Batch {i//batch_size}: {type(e).__name__}: {e}")
+            all_scores.extend([1.0] * len(batch_docs))
+    
+    return all_scores
 
 def call_llm_api(prompt, temperature=0.5, max_tokens=1024, retries=3):
     url = f"{SILICONFLOW_BASE_URL}/chat/completions"

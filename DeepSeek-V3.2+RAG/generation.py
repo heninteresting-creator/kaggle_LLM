@@ -1,9 +1,11 @@
 # generation.py
 import re
+from collections import Counter
 import pandas as pd
 from tqdm.auto import tqdm
 from api_client import call_llm_api
 from config import TEMPERATURE, MAX_TOKENS, NUM_TRIALS
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def build_prompt(row):
     """根据一行数据构造prompt"""
@@ -41,9 +43,25 @@ def extract_answer(text):
     letters = re.findall(r'[A-E]', text.upper())
     return letters[-1] if letters else "A"
 
-def generate_for_test(test_df, cache_path, output_path):
+def _majority_vote(letters):
+    letters = [x for x in letters if x]
+    if not letters:
+        return ""
+    counts = Counter(letters)
+    max_count = max(counts.values())
+    # 若平票，按出现顺序取第一个达到最大票数的
+    for x in letters:
+        if counts[x] == max_count:
+            return x
+    return letters[0]
+
+
+def generate_for_test(test_df, cache_path, output_path, *, answer_extractor=None, max_workers=10):
     """
     主生成流程：读取缓存，对每个问题生成NUM_TRIALS次答案，保存结果
+    
+    Args:
+        max_workers: 并发线程数（默认10）
     """
     # 读取检索缓存
     cache_df = pd.read_csv(cache_path)
@@ -54,21 +72,36 @@ def generate_for_test(test_df, cache_path, output_path):
 
     for trial in range(NUM_TRIALS):
         print(f"\n▶️ 第 {trial+1}/{NUM_TRIALS} 遍生成...")
-        for idx, row in tqdm(test_df.iterrows(), total=len(test_df), desc=f"Trial {trial+1}"):
+        
+        # 🚀 并发调用LLM
+        def process_single(row):
             prompt = build_prompt(row)
             output = call_llm_api(prompt, temperature=TEMPERATURE, max_tokens=MAX_TOKENS)
+            return row.name, output
+        
+        outputs = []
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(process_single, row) for idx, row in test_df.iterrows()]
+            for future in tqdm(as_completed(futures), total=len(futures), desc=f"Trial {trial+1}"):
+                outputs.append(future.result())
+        
+        # 按顺序保存结果
+        for idx, output in outputs:
             results_dict[idx]['raw_outputs'].append(output)
 
-    # 汇总
+    # 汇总 - 按照您的要求组织输出
     final = []
     for idx, data in results_dict.items():
         row = data['row']
         raw = data['raw_outputs']
-        letters = [extract_answer(t) for t in raw]
+        extractor = answer_extractor or extract_answer
+        letters = [extractor(t) for t in raw]
+        model_final = _majority_vote(letters)
+        
         final.append({
             'id': row['id'],
-            'prompt': row['prompt'][:50] + "...",
-            'correct': row.get('answer', 'N/A'),
+            'prompt': row['prompt'],
+            'correct': row.get('answer', ''),
             'trial1': letters[0] if len(letters) > 0 else '',
             'trial2': letters[1] if len(letters) > 1 else '',
             'trial3': letters[2] if len(letters) > 2 else '',
